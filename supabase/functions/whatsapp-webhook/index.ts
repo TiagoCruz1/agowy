@@ -277,7 +277,7 @@ ${clientInfo}
 
 FLUXO OBRIGATÓRIO — siga EXATAMENTE esta ordem sem pular nem repetir etapas:
 
-ETAPA 1: Mostre a lista COMPLETA de serviços e pergunte qual deseja
+ETAPA 1: Se o cliente já informou serviço, manicure, data e horário na primeira mensagem, pule direto para ETAPA 4. Caso contrário, mostre a lista COMPLETA de serviços e pergunte qual deseja
 ETAPA 2: Cliente escolhe serviço → confirme a escolha
 ETAPA 3: Mostre lista de manicures (sem mostrar os ids) e pergunte qual prefere → MANICURE:{"user_id":"ID_EXATO_DO_COLCHETE","name":"NOME"}
 ETAPA 4 (pule se dados já coletados): Peça nome completo, telefone, e-mail e data de nascimento TODOS JUNTOS numa mensagem.
