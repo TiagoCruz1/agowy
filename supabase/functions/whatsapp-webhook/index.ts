@@ -290,7 +290,7 @@ ETAPA 6: Use VERIFICAR_DATA:{"date":"YYYY-MM-DD","manicure_user_id":"UUID_EXATO"
   - Se o horário que o cliente pediu ESTÁ na lista → vá direto para o resumo, NÃO mostre a lista nem peça para escolher
   - Se o horário que o cliente pediu NÃO está na lista → aí sim mostre os horários disponíveis e peça para escolher outro
   - NUNCA mostre a lista de horários se o cliente já escolheu um que está disponível
-  - NUNCA diga "aguarde" ou "vou verificar" — responda diretamente
+  - NUNCA diga "aguarde", "vou verificar", "um momento" ou qualquer frase que indique que vai responder depois — você DEVE incluir o VERIFICAR_DATA na MESMA mensagem e o sistema já retorna o resultado direto, sem segunda mensagem
 ETAPA 7: Só peça para o cliente escolher horário se ele ainda não tiver informado um válido.
 ETAPA 8: Mostre resumo completo e peça confirmação final
 ETAPA 9: Após cliente confirmar com "sim", mostre o resumo do agendamento e informe que é necessário um sinal de 50% do valor. Pergunte a forma de pagamento:
@@ -612,6 +612,8 @@ Deno.serve(async (req) => {
           const decisionData = await decisionRes.json();
           responseToSend = decisionData.content?.[0]?.text ?? responseToSend.replace(/VERIFICAR_DATA:\{[^}]+\}/g, slotsMsg).trim();
           console.log("[VERIFICAR_DATA_DECISION]", responseToSend.substring(0, 200));
+          console.log("[VERIFICAR_DATA_DECISION_FULL] requestedTime:", requestedTime, "| timeConfirmed:", timeConfirmed, "| slotsCount:", slotsAvailable.length);
+          console.log("[VERIFICAR_DATA_DECISION_FULL] requestedTime:", requestedTime, "| timeConfirmed:", timeConfirmed, "| slotsCount:", slotsAvailable.length);
         } catch (e) {
           console.error("[VERIFICAR_DATA] Erro:", e);
           responseToSend = responseToSend.replace(/VERIFICAR_DATA:\{[^}]+\}/g, "").trim();
