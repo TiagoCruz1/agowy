@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffectiveUser } from "@/hooks/useEffectiveUser";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,25 +31,38 @@ export default function Clients() {
   const { user } = useAuth();
   const { effectiveUserId } = useEffectiveUser();
   const userId = effectiveUserId || user?.id;
+  const { isManicure } = useUserRole();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ClientForm>(emptyForm);
 
+  // Submanicure vê clientes da dona do estúdio
+  const { data: ownerForClients } = useQuery({
+    queryKey: ["studio-owner-for-clients"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("user_id").eq("account_type", "studio").single();
+      return data;
+    },
+    enabled: !!isManicure,
+  });
+
+  const clientsOwnerId = isManicure ? ownerForClients?.user_id : userId;
+
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["clients", userId],
+    queryKey: ["clients", clientsOwnerId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
         .select("*")
-        .eq("user_id", userId!)
+        .eq("user_id", clientsOwnerId!)
         .eq("is_active", true)
         .order("full_name");
       if (error) throw error;
       return data;
     },
-    enabled: !!userId,
+    enabled: !!clientsOwnerId,
   });
 
   const saveMutation = useMutation({
@@ -108,6 +122,7 @@ export default function Clients() {
           <h1 className="text-3xl font-bold">Clientes</h1>
           <p className="text-muted-foreground">{clients.length} clientes cadastrados</p>
         </div>
+        {!isManicure && (
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
             <Button><Plus className="w-4 h-4 mr-2" /> Novo Cliente</Button>

@@ -283,7 +283,8 @@ ETAPA 3: Mostre lista de manicures (sem mostrar os ids) e pergunte qual prefere 
 ETAPA 4 (pule se dados já coletados): Peça nome completo, telefone, e-mail e data de nascimento TODOS JUNTOS numa mensagem.
   Quando cliente responder, extraia cada campo e registre:
   CLIENTE_DADO:{"field":"name","value":"NOME"} CLIENTE_DADO:{"field":"phone","value":"TEL"} CLIENTE_DADO:{"field":"email","value":"EMAIL"} CLIENTE_DADO:{"field":"birth_date","value":"DD/MM/AAAA"}
-ETAPA 5 (só depois de TODOS os dados coletados): Pergunte qual data prefere
+ETAPA 5 (só depois de TODOS os dados coletados): Pergunte qual data e horário prefere.
+  Se o cliente já informar data, horário, serviço e manicure numa única mensagem (ex: "quero manicure simples dia 15/05 às 13h com a Fernanda"), identifique todos os dados diretamente sem perguntar de novo. Use VERIFICAR_DATA para confirmar disponibilidade.
 ETAPA 6: Para QUALQUER data que o cliente informar, use SEMPRE VERIFICAR_DATA:{"date":"YYYY-MM-DD","manicure_user_id":"UUID_EXATO"} — os horários já excluem os ocupados automaticamente. Apresente APENAS os horários retornados pelo sistema, nunca invente horários
 ETAPA 7: Cliente escolhe o horário da lista apresentada pelo sistema
 ETAPA 8: Mostre resumo completo e peça confirmação final
@@ -630,6 +631,12 @@ Deno.serve(async (req) => {
             // Limpa pending para recomeçar escolha de horário
             newStateData.pending_appointment = null;
           } else {
+            // Garante que manicure_user_id é UUID válido, usa selectedManicure como fallback
+            const isUUID = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+            if (!apptData.manicure_user_id || !isUUID(String(apptData.manicure_user_id))) {
+              apptData.manicure_user_id = selectedManicure?.user_id || null;
+              console.log("[PAGAMENTO] manicure_user_id corrigido para:", apptData.manicure_user_id);
+            }
             newStateData.pending_appointment = apptData;
             console.log("[PAGAMENTO] Agendamento pendente salvo:", apptData);
           }
