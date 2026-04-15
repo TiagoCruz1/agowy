@@ -176,7 +176,10 @@ export default function Financial() {
       if (linksError) throw linksError;
       if (!links || links.length === 0) return [] as StaffRevenueRow[];
 
-      const userIds = links.map((l: any) => l.manicure_user_id);
+      // Remove a própria dona do estúdio da lista de funcionárias
+      const userIds = links
+        .map((l: any) => l.manicure_user_id)
+        .filter((id: string) => id !== userId);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, user_id, full_name")
