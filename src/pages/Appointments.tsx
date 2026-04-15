@@ -38,7 +38,18 @@ export default function Appointments() {
   const { user } = useAuth();
   const { effectiveUserId } = useEffectiveUser();
   const userId = effectiveUserId || user?.id;
-  const { isStudioOwner } = useUserRole();
+  const { isStudioOwner, isManicure } = useUserRole();
+
+  const { data: studioOwner } = useQuery({
+    queryKey: ["studio-owner-appt"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("user_id").eq("account_type", "studio").single();
+      return data;
+    },
+    enabled: !!isManicure,
+  });
+
+  const ownerUserId = isManicure ? studioOwner?.user_id : userId;
   const queryClient = useQueryClient();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -74,18 +85,18 @@ export default function Appointments() {
   });
 
   const { data: clients = [] } = useQuery({
-    queryKey: ["clients-select", userId],
+    queryKey: ["clients-select", ownerUserId || userId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
         .select("id, full_name")
-        .eq("user_id", userId!)
+        .eq("user_id", ownerUserId || userId!)
         .eq("is_active", true)
         .order("full_name");
       if (error) throw error;
       return data;
     },
-    enabled: !!userId,
+    enabled: !!(ownerUserId || userId),
   });
 
   const { data: services = [] } = useQuery({
