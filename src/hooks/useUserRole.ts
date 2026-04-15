@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export function useUserRole() {
   const { user } = useAuth();
 
-  const { data: roles = [], isLoading } = useQuery({
+  const { data: roles = [], isLoading: rolesLoading } = useQuery({
     queryKey: ["user-roles", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -18,7 +18,7 @@ export function useUserRole() {
     enabled: !!user,
   });
 
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["profile-type", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -31,6 +31,8 @@ export function useUserRole() {
     },
     enabled: !!user,
   });
+
+  const isLoading = rolesLoading || profileLoading;
 
   return {
     roles,

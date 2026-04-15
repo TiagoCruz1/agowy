@@ -41,7 +41,7 @@ import { Badge } from "@/components/ui/badge";
 
 export function AppSidebar() {
   const { signOut } = useAuth();
-  const { isAdmin, isStudioOwner } = useUserRole();
+  const { isAdmin, isStudioOwner, isManicure, isLoading } = useUserRole();
   const { impersonatedUser, setImpersonatedUser } = useAdminContext();
   const location = useLocation();
 
@@ -70,12 +70,13 @@ export function AppSidebar() {
     enabled: isAdmin,
   });
 
-  const nonAdminProfiles = allProfiles.filter((p: any) => 
+  const nonAdminProfiles = allProfiles.filter((p: any) =>
     !allRoles.some((r: any) => r.user_id === p.user_id && r.role === "admin")
   );
 
-  const { isManicure } = useUserRole();
-  const staffItem = isStudioOwner ? [{ title: "Funcionários", url: "/dashboard/staff", icon: UserCog }] : [];
+  const staffItem = isStudioOwner
+    ? [{ title: "Funcionários", url: "/dashboard/staff", icon: UserCog }]
+    : [];
 
   const allMenuItems = [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, showManicure: true },
@@ -92,9 +93,35 @@ export function AppSidebar() {
     ...staffItem.map(s => ({ ...s, showManicure: false })),
   ];
 
-  const menuItems = isManicure
+  const { isLoading: rolesLoading } = useUserRole();
+  const menuItems = rolesLoading
+    ? []
+    : isManicure
     ? allMenuItems.filter(item => item.showManicure)
     : allMenuItems;
+
+  // Não renderiza o menu enquanto os roles/profile ainda estão carregando
+  if (isLoading) {
+    return (
+      <Sidebar>
+        <SidebarHeader className="p-4">
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
+              NailBook
+            </span>
+          </Link>
+        </SidebarHeader>
+        <SidebarContent>
+          <div className="p-4 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+          </div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar>
@@ -109,7 +136,6 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        {/* Admin impersonation */}
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel className="flex items-center gap-1">
@@ -181,6 +207,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Administração</SidebarGroupLabel>
