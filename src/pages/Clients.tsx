@@ -164,6 +164,7 @@ export default function Clients() {
             </form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <div className="relative">
