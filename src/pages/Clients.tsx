@@ -195,8 +195,7 @@ export default function Clients() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead className="hidden md:table-cell">Nascimento</TableHead>
-                  <TableHead className="hidden lg:table-cell">Cidade</TableHead>
-                  <TableHead className="w-[100px]">Ações</TableHead>
+                  {!isManicure && <TableHead className="w-[100px]">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -207,16 +206,18 @@ export default function Clients() {
                     <TableCell className="hidden md:table-cell">
                       {client.date_of_birth ? format(new Date(client.date_of_birth + "T12:00:00"), "dd/MM/yyyy") : "—"}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(client)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(client.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {!isManicure && (
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(client)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(client.id)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
