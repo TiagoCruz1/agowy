@@ -509,6 +509,18 @@ Deno.serve(async (req) => {
       const h = timeMatch[1].padStart(2, "0");
       const m = (timeMatch[2] || "00").padStart(2, "0");
       newStateData.requested_time = `${h}:${m}`;
+    } else if (!newStateData.requested_time) {
+      // Se não tem na mensagem atual, busca no histórico
+      for (let i = newHistory.length - 1; i >= 0; i--) {
+        const histMsg = newHistory[i].content as string;
+        const histMatch = histMsg.match(/\b([0-1]?[0-9]|2[0-3])[:h]([0-5][0-9])\b/);
+        if (histMatch) {
+          const h = histMatch[1].padStart(2, "0");
+          const m = histMatch[2].padStart(2, "0");
+          newStateData.requested_time = `${h}:${m}`;
+          break;
+        }
+      }
     }
     let responseToSend = claudeResponse;
 
