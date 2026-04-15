@@ -502,6 +502,14 @@ Deno.serve(async (req) => {
     ].slice(-20);
 
     let newStateData: any = { ...stateData, history: newHistory, last_message_id: messageId };
+
+    // Extrai horário da mensagem atual e salva no state
+    const timeMatch = messageText.match(/\b([0-1]?[0-9]|2[0-3])[:h]([0-5][0-9])?\b/);
+    if (timeMatch) {
+      const h = timeMatch[1].padStart(2, "0");
+      const m = (timeMatch[2] || "00").padStart(2, "0");
+      newStateData.requested_time = `${h}:${m}`;
+    }
     let responseToSend = claudeResponse;
 
     // Processa VERIFICAR_DATA:
@@ -552,8 +560,46 @@ Deno.serve(async (req) => {
               ? `Horários disponíveis em ${d}/${m}/${y}: ${slots.join(", ")}`
               : `Sem horários disponíveis em ${d}/${m}/${y}.`;
           }
-          responseToSend = responseToSend.replace(/VERIFICAR_DATA:\{[^}]+\}/g, slotsMsg).trim();
           console.log("[VERIFICAR_DATA]", slotsMsg);
+
+          // Segunda chamada ao Claude com os horários reais
+          const requestedTime = newStateData.requested_time || "";
+          const slotsAvailable = slots ?? [];
+          const timeConfirmed = requestedTime && slotsAvailable.includes(requestedTime);
+
+          let decisionPrompt = "";
+          if (!wh || !wh.is_open) {
+            decisionPrompt = `O sistema retornou: "${slotsMsg}". Informe ao cliente que não atendemos nesse dia e peça para escolher outro.`;
+          } else if (timeConfirmed) {
+            decisionPrompt = `O sistema confirmou: horário ${requestedTime} está disponível em ${dateStr.split("-").reverse().join("/")}. Vá direto para o resumo do agendamento (ETAPA 8) sem listar os outros horários.`;
+          } else if (requestedTime && !timeConfirmed && slotsAvailable.length > 0) {
+            decisionPrompt = `O horário ${requestedTime} não está disponível. Os horários disponíveis são: ${slotsAvailable.join(", ")}. Informe ao cliente e peça para escolher outro horário.`;
+          } else {
+            decisionPrompt = `${slotsMsg}. Apresente os horários disponíveis ao cliente e peça para escolher um.`;
+          }
+
+          const decisionMessages = [
+            ...newHistory,
+            { role: "user" as const, content: `[SISTEMA] ${decisionPrompt}` }
+          ];
+
+          const decisionRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "x-api-key": Deno.env.get("ANTHROPIC_API_KEY") ?? "",
+              "anthropic-version": "2023-06-01",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "claude-haiku-4-5-20251001",
+              max_tokens: 1024,
+              system: systemPrompt,
+              messages: decisionMessages,
+            }),
+          });
+          const decisionData = await decisionRes.json();
+          responseToSend = decisionData.content?.[0]?.text ?? responseToSend.replace(/VERIFICAR_DATA:\{[^}]+\}/g, slotsMsg).trim();
+          console.log("[VERIFICAR_DATA_DECISION]", responseToSend.substring(0, 200));
         } catch (e) {
           console.error("[VERIFICAR_DATA] Erro:", e);
           responseToSend = responseToSend.replace(/VERIFICAR_DATA:\{[^}]+\}/g, "").trim();
