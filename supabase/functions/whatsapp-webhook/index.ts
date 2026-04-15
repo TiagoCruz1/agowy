@@ -540,13 +540,25 @@ Deno.serve(async (req) => {
           if (!wh || !wh.is_open) {
             slotsMsg = `Não atendemos no dia ${dateStr.split("-").reverse().join("/")}. Escolha outro dia.`;
           } else {
+            // Busca o profile_id da manicure selecionada para filtrar corretamente
+            let manicureProfileId: string | null = null;
+            if (manicureUid) {
+              const { data: mp } = await supabase
+                .from("profiles").select("id").eq("user_id", manicureUid).single();
+              manicureProfileId = mp?.id ?? null;
+            }
+
             let apptQuery = supabase.from("appointments").select("start_at, end_at")
               .eq("user_id", ownerUserId)
               .gte("start_at", `${dateStr}T00:00:00`)
               .lte("start_at", `${dateStr}T23:59:59`)
               .in("status", ["scheduled", "confirmed"]);
-            // Não filtra por manicure — verifica conflito geral no estúdio
-            // (impede dois agendamentos no mesmo horário independente da manicure)
+
+            // Filtra pelo manicure_id se tiver — verifica só os horários da manicure escolhida
+            if (manicureProfileId) {
+              apptQuery = apptQuery.eq("manicure_id", manicureProfileId);
+            }
+
             const { data: existingAppts } = await apptQuery;
             const [openH, openM] = wh.open_time.split(":").map(Number);
             const [closeH, closeM] = wh.close_time.split(":").map(Number);
