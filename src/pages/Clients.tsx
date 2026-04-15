@@ -194,7 +194,8 @@ export default function Clients() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead className="hidden md:table-cell">Nascimento</TableHead>
+                  <TableHead className="hidden md:table-cell">E-mail</TableHead>
+                  <TableHead className="hidden lg:table-cell">Nascimento</TableHead>
                   {!isManicure && <TableHead className="w-[100px]">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -203,7 +204,8 @@ export default function Clients() {
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">{client.full_name}</TableCell>
                     <TableCell>{client.phone || "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell className="hidden md:table-cell">{client.email || "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       {client.date_of_birth ? format(new Date(client.date_of_birth + "T12:00:00"), "dd/MM/yyyy") : "—"}
                     </TableCell>
                     {!isManicure && (
