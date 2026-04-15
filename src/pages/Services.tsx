@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Scissors } from "lucide-react";
+import { Plus, Pencil, Trash2, Scissors, Percent } from "lucide-react";
 
 interface ServiceForm {
   name: string;
@@ -48,6 +48,8 @@ export default function Services() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ServiceForm>(emptyForm);
+  const [bulkCommission, setBulkCommission] = useState<number>(0);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
   // Para submanicures, busca serviços da dona do estúdio
   const { data: ownerProfile } = useQuery({
@@ -123,6 +125,22 @@ export default function Services() {
 
   const resetForm = () => { setForm(emptyForm); setEditingId(null); };
 
+  const bulkCommissionMutation = useMutation({
+    mutationFn: async (pct: number) => {
+      const ids = services.map((s: any) => s.id);
+      for (const id of ids) {
+        const { error } = await supabase.from("services").update({ commission_percentage: pct }).eq("id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+      toast.success(`Comissão de ${bulkCommission}% aplicada a todos os serviços!`);
+      setBulkDialogOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const openEdit = (service: any) => {
     setForm({
       name: service.name,
@@ -148,10 +166,40 @@ export default function Services() {
           </p>
         </div>
         {!isManicure && (
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button><Plus className="w-4 h-4 mr-2" /> Novo Serviço</Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline"><Percent className="w-4 h-4 mr-2" /> Comissão Geral</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Definir Comissão para Todos</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Define o mesmo percentual de comissão para todos os {services.length} serviços de uma vez.</p>
+                  <div className="space-y-2">
+                    <Label>Comissão (%)</Label>
+                    <Input
+                      type="number" min={0} max={100} step={0.5}
+                      value={bulkCommission}
+                      onChange={(e) => setBulkCommission(Number(e.target.value))}
+                      placeholder="Ex: 50"
+                    />
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => bulkCommissionMutation.mutate(bulkCommission)}
+                    disabled={bulkCommissionMutation.isPending}
+                  >
+                    {bulkCommissionMutation.isPending ? "Aplicando..." : `Aplicar ${bulkCommission}% a todos`}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button><Plus className="w-4 h-4 mr-2" /> Novo Serviço</Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>{editingId ? "Editar Serviço" : "Novo Serviço"}</DialogTitle>
@@ -205,6 +253,7 @@ export default function Services() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 
