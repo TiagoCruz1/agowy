@@ -181,13 +181,16 @@ Deno.serve(async (req) => {
     // Busca profile_id da manicure — garante que é UUID válido
     let manicureProfileId = null;
     if (pending.manicure_user_id) {
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pending.manicure_user_id);
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(pending.manicure_user_id));
       if (isUUID) {
         const { data: mProf } = await supabase.from("profiles").select("id").eq("user_id", pending.manicure_user_id).single();
         manicureProfileId = mProf?.id || null;
+        console.log("[MP-WEBHOOK] manicure profile_id:", manicureProfileId, "para user_id:", pending.manicure_user_id);
       } else {
         console.warn("[MP-WEBHOOK] manicure_user_id inválido (não é UUID):", pending.manicure_user_id);
       }
+    } else {
+      console.warn("[MP-WEBHOOK] manicure_user_id não informado no pending");
     }
 
     // Cria agendamento

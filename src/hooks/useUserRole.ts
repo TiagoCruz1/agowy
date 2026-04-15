@@ -40,5 +40,6 @@ export function useUserRole() {
     accountType: profile?.account_type,
     profile,
     isLoading,
+    isManicure: roles.includes("manicure"),
   };
 }

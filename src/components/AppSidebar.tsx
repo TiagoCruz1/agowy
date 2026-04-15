@@ -74,21 +74,27 @@ export function AppSidebar() {
     !allRoles.some((r: any) => r.user_id === p.user_id && r.role === "admin")
   );
 
+  const { isManicure } = useUserRole();
   const staffItem = isStudioOwner ? [{ title: "Funcionários", url: "/dashboard/staff", icon: UserCog }] : [];
-  const menuItems = [
-    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Agendamentos", url: "/dashboard/appointments", icon: Calendar },
-    { title: "Clientes", url: "/dashboard/clients", icon: Users },
-    { title: "Serviços", url: "/dashboard/services", icon: Scissors },
-    { title: "Horários", url: "/dashboard/working-hours", icon: Clock },
-    { title: "Bloqueios", url: "/dashboard/blocks", icon: Ban },
-    { title: "Faturamento", url: "/dashboard/financial", icon: DollarSign },
-    { title: "Manutenção", url: "/dashboard/maintenance", icon: Wrench },
-    { title: "Avaliações", url: "/dashboard/reviews", icon: Star },
-    { title: "WhatsApp", url: "/dashboard/whatsapp", icon: MessageCircle },
-    { title: "Configurações", url: "/dashboard/settings", icon: Settings },
-    ...staffItem,
+
+  const allMenuItems = [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, showManicure: true },
+    { title: "Agendamentos", url: "/dashboard/appointments", icon: Calendar, showManicure: true },
+    { title: "Clientes", url: "/dashboard/clients", icon: Users, showManicure: true },
+    { title: "Serviços", url: "/dashboard/services", icon: Scissors, showManicure: false },
+    { title: "Horários", url: "/dashboard/working-hours", icon: Clock, showManicure: false },
+    { title: "Bloqueios", url: "/dashboard/blocks", icon: Ban, showManicure: true },
+    { title: "Faturamento", url: "/dashboard/financial", icon: DollarSign, showManicure: false },
+    { title: "Manutenção", url: "/dashboard/maintenance", icon: Wrench, showManicure: false },
+    { title: "Avaliações", url: "/dashboard/reviews", icon: Star, showManicure: false },
+    { title: "WhatsApp", url: "/dashboard/whatsapp", icon: MessageCircle, showManicure: false },
+    { title: "Configurações", url: "/dashboard/settings", icon: Settings, showManicure: false },
+    ...staffItem.map(s => ({ ...s, showManicure: false })),
   ];
+
+  const menuItems = isManicure
+    ? allMenuItems.filter(item => item.showManicure)
+    : allMenuItems;
 
   return (
     <Sidebar>
