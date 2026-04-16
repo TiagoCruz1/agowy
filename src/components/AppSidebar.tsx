@@ -33,6 +33,7 @@ import {
   Shield,
   DollarSign,
   ArrowLeftRight,
+  CreditCard,
   X,
   UserCog,
 } from "lucide-react";
@@ -121,6 +122,7 @@ export function AppSidebar() {
     { title: "Horários", url: "/dashboard/working-hours", icon: Clock, showManicure: true },
     { title: "Bloqueios", url: "/dashboard/blocks", icon: Ban, showManicure: true },
     { title: "Faturamento", url: "/dashboard/financial", icon: DollarSign, showManicure: true },
+    { title: "Pagamentos", url: "/dashboard/payments", icon: CreditCard, showManicure: true },
     { title: "Manutenção", url: "/dashboard/maintenance", icon: Wrench, showManicure: true },
     { title: "Avaliações", url: "/dashboard/reviews", icon: Star, showManicure: false },
     { title: "WhatsApp", url: "/dashboard/whatsapp", icon: MessageCircle, showManicure: false },

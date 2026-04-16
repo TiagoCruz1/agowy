@@ -20,6 +20,7 @@ import Reviews from "./pages/Reviews";
 import Maintenance from "./pages/Maintenance";
 import Financial from "./pages/Financial";
 import Staff from "./pages/Staff";
+import Payments from "./pages/Payments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="maintenance" element={<Maintenance />} />
               <Route path="admin" element={<Admin />} />
               <Route path="staff" element={<Staff />} />
+              <Route path="payments" element={<Payments />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
