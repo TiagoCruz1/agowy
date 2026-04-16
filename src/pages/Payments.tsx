@@ -90,7 +90,7 @@ export default function Payments() {
         manicure_name: profileMap.get(r.manicure_user_id) || "—",
       }));
     },
-    enabled: !!userId,
+    enabled: !!userId && !roleLoading,
   });
 
   const { data: receiptItems } = useQuery({
