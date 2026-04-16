@@ -64,7 +64,7 @@ export default function Payments() {
     queryFn: async () => {
       let query = supabase
         .from("payment_receipts")
-        .select("*, manicure:manicure_user_id(full_name)")
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (isStudioOwner) {
@@ -75,7 +75,20 @@ export default function Payments() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+
+      // Busca nomes das manicures
+      const manicureIds = [...new Set((data || []).map((r: any) => r.manicure_user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", manicureIds);
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.full_name]));
+
+      return (data || []).map((r: any) => ({
+        ...r,
+        manicure_name: profileMap.get(r.manicure_user_id) || "—",
+      }));
     },
     enabled: !!userId,
   });
@@ -257,7 +270,7 @@ export default function Payments() {
                         </p>
                       </TableCell>
                       {isStudioOwner && (
-                        <TableCell>{(r as any).manicure?.full_name || "—"}</TableCell>
+                        <TableCell>{r.manicure_name || "—"}</TableCell>
                       )}
                       <TableCell className="text-right font-bold">{formatBRL(r.amount)}</TableCell>
                       <TableCell>
