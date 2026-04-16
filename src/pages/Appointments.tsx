@@ -198,11 +198,16 @@ export default function Appointments() {
         throw new Error(conflict);
       }
 
-      // Salva o horário exatamente como digitado (sem conversão de fuso)
+      // Salva com offset -03:00 para garantir fuso Brasília
       const start_at = `${form.date}T${form.time}:00-03:00`;
-      const endDate = new Date(`${form.date}T${form.time}:00-03:00`);
-      endDate.setMinutes(endDate.getMinutes() + duration);
-      const end_at = `${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}T${String(endDate.getHours()).padStart(2,'0')}:${String(endDate.getMinutes()).padStart(2,'0')}:00`;
+      // Calcula end_at somando duração aos minutos do horário digitado
+      const [startH, startM] = form.time.split(":").map(Number);
+      const totalMinutes = startH * 60 + startM + duration;
+      const endH = Math.floor(totalMinutes / 60) % 24;
+      const endMin = totalMinutes % 60;
+      const endHStr = String(endH).padStart(2, "0");
+      const endMinStr = String(endMin).padStart(2, "0");
+      const end_at = `${form.date}T${endHStr}:${endMinStr}:00-03:00`;
 
       const payload: any = {
         user_id: userId!,
