@@ -77,7 +77,7 @@ export function AppSidebar() {
 
   // Badge manutenção
   const { data: maintenanceBadge = 0 } = useQuery({
-    queryKey: ["maintenance-badge", userId],
+    queryKey: ["maintenance-badge"],
     queryFn: async () => {
       const { data: userRecord } = await supabase.auth.getUser();
       const uid = userRecord?.user?.id;
