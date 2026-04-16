@@ -13,10 +13,85 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Receipt, Plus, CheckCircle, Upload, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Receipt, Plus, CheckCircle, Upload, ChevronDown, ChevronUp, Trash2, FileText, Eye } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+
+function generateReceiptPDF(receipt: any, items: any[], manicureName: string) {
+  const periodStart = receipt.period_start;
+  const periodEnd = receipt.period_end;
+  const total = Number(receipt.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const rows = items.map((item: any) => `
+    <tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee">${item.service_name}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${Number(item.service_value).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${item.commission_percentage}%</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;color:#e91e8c;font-weight:600">${Number(item.commission_value).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
+    </tr>
+  `).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Recibo de Comissão</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; color: #333; }
+  h1 { color: #e91e8c; font-size: 24px; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 14px; margin-bottom: 24px; }
+  .info { background: #f9f9f9; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+  .info p { margin: 4px 0; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  thead th { background: #f0f0f0; padding: 8px; text-align: left; font-size: 13px; }
+  thead th:not(:first-child) { text-align: right; }
+  .total-row td { font-weight: bold; padding: 10px 8px; border-top: 2px solid #e91e8c; }
+  .signature { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 24px; }
+  .sig-line { border-bottom: 1px solid #333; width: 300px; margin: 40px 0 8px; }
+  .sig-label { font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+  <h1>💅 Recibo de Comissão</h1>
+  <p class="subtitle">NailBook — Yasmin Nails Studio</p>
+  <div class="info">
+    <p><strong>Manicure:</strong> ${manicureName}</p>
+    <p><strong>Período:</strong> ${periodStart.split("-").reverse().join("/")} a ${periodEnd.split("-").reverse().join("/")}</p>
+    <p><strong>Gerado em:</strong> ${new Date().toLocaleDateString("pt-BR")}</p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Serviço</th>
+        <th style="text-align:right">Valor</th>
+        <th style="text-align:right">Comissão %</th>
+        <th style="text-align:right">Comissão R$</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+      <tr class="total-row">
+        <td colspan="3">Total a receber</td>
+        <td style="text-align:right;color:#e91e8c">${total}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="signature">
+    <p style="font-size:14px;margin-bottom:8px">Declaro que recebi o valor acima referente às comissões do período.</p>
+    <div class="sig-line"></div>
+    <p class="sig-label">${manicureName} — Assinatura</p>
+    <p class="sig-label" style="margin-top:16px">Data: ___/___/______</p>
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `recibo_${manicureName.replace(/\s+/g,"_")}_${periodStart}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function formatBRL(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -301,7 +376,25 @@ export default function Payments() {
                             {expandedReceipt === r.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             Detalhes
                           </Button>
-                          {r.status === "pending" && (
+                          {/* Botão PDF — sempre disponível */}
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                            onClick={() => {
+                              if (expandedReceipt !== r.id) setExpandedReceipt(r.id);
+                              setTimeout(() => generateReceiptPDF(r, receiptItems || [], r.manicure_name || ""), 300);
+                            }}>
+                            <FileText className="w-3 h-3" />
+                            PDF
+                          </Button>
+                          {/* Ver assinatura — se tiver foto */}
+                          {r.manual_signature_url && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-success"
+                              onClick={() => window.open(r.manual_signature_url, "_blank")}>
+                              <Eye className="w-3 h-3" />
+                              Ver
+                            </Button>
+                          )}
+                          {/* Submanicure: assinar digital + foto */}
+                          {isManicure && r.status === "pending" && (
                             <>
                               <Button size="sm" variant="default" className="h-7 text-xs gap-1"
                                 onClick={() => signMutation.mutate(r.id)}>
@@ -320,8 +413,9 @@ export default function Payments() {
                               </label>
                             </>
                           )}
+                          {/* Dona: apagar */}
                           {isStudioOwner && (
-                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                            <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive"
                               onClick={() => { if (confirm("Apagar este recibo?")) deleteMutation.mutate(r.id); }}>
                               <Trash2 className="w-3 h-3" />
                             </Button>
