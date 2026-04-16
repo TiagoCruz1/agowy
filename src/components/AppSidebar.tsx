@@ -3,6 +3,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useAdminContext } from "@/contexts/AdminContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { addDays, differenceInDays } from "date-fns";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -73,6 +74,40 @@ export function AppSidebar() {
   const nonAdminProfiles = allProfiles.filter((p: any) =>
     !allRoles.some((r: any) => r.user_id === p.user_id && r.role === "admin")
   );
+
+  // Badge manutenção
+  const { data: maintenanceBadge = 0 } = useQuery({
+    queryKey: ["maintenance-badge", userId],
+    queryFn: async () => {
+      const { data: userRecord } = await supabase.auth.getUser();
+      const uid = userRecord?.user?.id;
+      if (!uid) return 0;
+      const { data: appointments } = await supabase
+        .from("appointments")
+        .select("start_at, client_id, service_id, services(maintenance_interval_days, maintenance_alert_days)")
+        .eq("user_id", uid)
+        .eq("status", "completed")
+        .order("start_at", { ascending: false });
+      if (!appointments) return 0;
+      const latestMap = new Map<string, any>();
+      for (const apt of appointments) {
+        const key = `${apt.client_id}-${apt.service_id}`;
+        if (!latestMap.has(key)) latestMap.set(key, apt);
+      }
+      const today = new Date();
+      let count = 0;
+      for (const apt of latestMap.values()) {
+        const interval = apt.services?.maintenance_interval_days;
+        const alertDays = apt.services?.maintenance_alert_days || 15;
+        if (!interval) continue;
+        const dueDate = addDays(new Date(apt.start_at), interval);
+        const daysUntilDue = differenceInDays(dueDate, today);
+        if (daysUntilDue <= alertDays) count++;
+      }
+      return count;
+    },
+    refetchInterval: 5 * 60 * 1000,
+  });
 
   const staffItem = isStudioOwner
     ? [{ title: "Funcionários", url: "/dashboard/staff", icon: UserCog }]
@@ -197,9 +232,16 @@ export function AppSidebar() {
                     asChild
                     isActive={location.pathname === item.url}
                   >
-                    <Link to={item.url}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
+                    <Link to={item.url} className="flex items-center justify-between w-full">
+                      <span className="flex items-center gap-2">
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </span>
+                      {item.title === "Manutenção" && maintenanceBadge > 0 && (
+                        <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                          {maintenanceBadge > 9 ? "9+" : maintenanceBadge}
+                        </span>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
