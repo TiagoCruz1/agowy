@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Receipt, Plus, CheckCircle, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { Receipt, Plus, CheckCircle, Upload, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -187,6 +187,19 @@ export default function Payments() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (receiptId: string) => {
+      await supabase.from("payment_receipt_items").delete().eq("receipt_id", receiptId);
+      const { error } = await supabase.from("payment_receipts").delete().eq("id", receiptId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payment-receipts"] });
+      toast.success("Recibo apagado!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const uploadSignatureMutation = useMutation({
     mutationFn: async ({ receiptId, file }: { receiptId: string; file: File }) => {
       const path = `signatures/${receiptId}/${file.name}`;
@@ -290,13 +303,11 @@ export default function Payments() {
                           </Button>
                           {r.status === "pending" && (
                             <>
-                              {isManicure && (
-                                <Button size="sm" variant="default" className="h-7 text-xs gap-1"
-                                  onClick={() => signMutation.mutate(r.id)}>
-                                  <CheckCircle className="w-3 h-3" />
-                                  Assinar
-                                </Button>
-                              )}
+                              <Button size="sm" variant="default" className="h-7 text-xs gap-1"
+                                onClick={() => signMutation.mutate(r.id)}>
+                                <CheckCircle className="w-3 h-3" />
+                                Assinar
+                              </Button>
                               <label className="cursor-pointer">
                                 <input type="file" accept="image/*,.pdf" className="hidden"
                                   onChange={(e) => {
@@ -308,6 +319,12 @@ export default function Payments() {
                                 </Button>
                               </label>
                             </>
+                          )}
+                          {isStudioOwner && (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                              onClick={() => { if (confirm("Apagar este recibo?")) deleteMutation.mutate(r.id); }}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>
