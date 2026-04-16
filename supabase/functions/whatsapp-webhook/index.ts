@@ -280,7 +280,7 @@ FLUXO OBRIGATÓRIO — siga EXATAMENTE esta ordem sem pular nem repetir etapas:
 ETAPA 1: Se o cliente já informou serviço, manicure, data e horário na primeira mensagem, pule direto para ETAPA 4. Caso contrário, mostre a lista COMPLETA de serviços e pergunte qual deseja
 ETAPA 2: Cliente escolhe serviço → confirme a escolha
 ETAPA 3: Mostre lista de manicures (sem mostrar os ids) e pergunte qual prefere → MANICURE:{"user_id":"ID_EXATO_DO_COLCHETE","name":"NOME"}
-ETAPA 4 (pule se dados já coletados): Peça nome completo, telefone, e-mail e data de nascimento TODOS JUNTOS numa mensagem.
+ETAPA 4 (PULE COMPLETAMENTE se DADOS DA CLIENTE COMPLETOS aparecer acima): Peça nome completo, telefone, e-mail e data de nascimento TODOS JUNTOS numa mensagem. Se já tiver os dados completos, vá DIRETO para ETAPA 5.
   Quando cliente responder, extraia cada campo e registre:
   CLIENTE_DADO:{"field":"name","value":"NOME"} CLIENTE_DADO:{"field":"phone","value":"TEL"} CLIENTE_DADO:{"field":"email","value":"EMAIL"} CLIENTE_DADO:{"field":"birth_date","value":"DD/MM/AAAA"}
 ETAPA 5 (só depois de TODOS os dados coletados): Pergunte qual data e horário prefere.
