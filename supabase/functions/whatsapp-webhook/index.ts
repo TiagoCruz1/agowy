@@ -521,8 +521,26 @@ Deno.serve(async (req) => {
       availableSlots, clientData, manicures, selectedManicure,
     });
 
-    const claudeResponse = await askClaude(systemPrompt, chatHistory, messageText);
+    let claudeResponse = await askClaude(systemPrompt, chatHistory, messageText);
     console.log("[CLAUDE] Resposta:", claudeResponse.substring(0, 400));
+
+    // Se Claude pediu dados mas já temos todos — força pular para data/horário
+    const cd = clientData || {};
+    const hasAllClientData = cd.name && cd.phone && cd.email && cd.birth_date;
+    const isAskingForData = claudeResponse.match(/(nome completo|data de nascimento|informe seus dados|seus dados|preciso de.*dados)/i)
+      && !claudeResponse.includes("VERIFICAR_DATA")
+      && !claudeResponse.includes("AGUARDAR_PAGAMENTO")
+      && !claudeResponse.includes("GERAR_PIX")
+      && !claudeResponse.includes("GERAR_LINK");
+
+    if (hasAllClientData && isAskingForData) {
+      console.log("[CLIENT_SKIP] Dados já completos, forçando re-chamada sem pedir dados");
+      const skipPrompt = `${systemPrompt}
+
+ATENÇÃO: Os dados do cliente já estão completos (${cd.name}). NÃO peça dados novamente. Vá direto para perguntar a data e horário preferido.`;
+      claudeResponse = await askClaude(skipPrompt, chatHistory, messageText);
+      console.log("[CLIENT_SKIP] Nova resposta:", claudeResponse.substring(0, 200));
+    }
 
     const newHistory = [
       ...chatHistory,
