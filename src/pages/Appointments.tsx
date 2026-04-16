@@ -265,7 +265,7 @@ export default function Appointments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      queryClient.invalidateQueries({ queryKey: ["overdue-appointments"] });
+      queryClient.refetchQueries({ queryKey: ["overdue-appointments"] });
       queryClient.invalidateQueries({ queryKey: ["maintenance"] });
       queryClient.invalidateQueries({ queryKey: ["maintenance-badge"] });
       toast.success("Status atualizado!");
