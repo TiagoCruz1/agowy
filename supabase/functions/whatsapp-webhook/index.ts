@@ -422,7 +422,29 @@ Deno.serve(async (req) => {
 
     const chatHistory: any[] = stateData.history || [];
     const selectedManicure: any = stateData.selected_manicure || null;
-    const clientData: any = stateData.client_data || null;
+    let clientData: any = stateData.client_data || null;
+
+    // Se ainda não tem dados completos, busca cliente no banco pelo telefone
+    if (!clientData?.name || !clientData?.email || !clientData?.birth_date) {
+      const cleanPhone = phone.replace(/\D/g, "").replace(/^55/, "");
+      const { data: existingClient } = await supabase
+        .from("clients")
+        .select("full_name, phone, email, date_of_birth")
+        .eq("user_id", ownerUserId)
+        .or(`phone.eq.${cleanPhone},phone.eq.55${cleanPhone},phone.eq.+55${cleanPhone}`)
+        .maybeSingle();
+      if (existingClient) {
+        clientData = {
+          name: existingClient.full_name,
+          phone: existingClient.phone,
+          email: existingClient.email || clientData?.email,
+          birth_date: existingClient.date_of_birth
+            ? new Date(existingClient.date_of_birth).toLocaleDateString("pt-BR")
+            : clientData?.birth_date,
+        };
+        stateData.client_data = clientData;
+      }
+    }
 
     const { data: services } = await supabase
       .from("services").select("*").eq("user_id", ownerUserId).eq("is_active", true).order("display_order");
