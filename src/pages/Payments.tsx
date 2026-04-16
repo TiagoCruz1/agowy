@@ -378,9 +378,12 @@ export default function Payments() {
                           </Button>
                           {/* Botão PDF — sempre disponível */}
                           <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                            onClick={() => {
-                              if (expandedReceipt !== r.id) setExpandedReceipt(r.id);
-                              setTimeout(() => generateReceiptPDF(r, receiptItems || [], r.manicure_name || ""), 300);
+                            onClick={async () => {
+                              const { data: items } = await supabase
+                                .from("payment_receipt_items")
+                                .select("*")
+                                .eq("receipt_id", r.id);
+                              generateReceiptPDF(r, items || [], r.manicure_name || "");
                             }}>
                             <FileText className="w-3 h-3" />
                             PDF
