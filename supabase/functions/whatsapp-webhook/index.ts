@@ -427,12 +427,18 @@ Deno.serve(async (req) => {
     // Se ainda não tem dados completos, busca cliente no banco pelo telefone
     if (!clientData?.name || !clientData?.email || !clientData?.birth_date) {
       const cleanPhone = phone.replace(/\D/g, "").replace(/^55/, "");
-      const { data: existingClient } = await supabase
-        .from("clients")
-        .select("full_name, phone, email, date_of_birth")
-        .eq("user_id", ownerUserId)
-        .or(`phone.eq.${cleanPhone},phone.eq.55${cleanPhone},phone.eq.+55${cleanPhone}`)
-        .maybeSingle();
+      // Tenta encontrar cliente pelo número sem 55, com 55, ou com +55
+      let existingClient = null;
+      for (const tryPhone of [cleanPhone, `55${cleanPhone}`, `+55${cleanPhone}`]) {
+        const { data } = await supabase
+          .from("clients")
+          .select("full_name, phone, email, date_of_birth")
+          .eq("user_id", ownerUserId)
+          .eq("phone", tryPhone)
+          .maybeSingle();
+        if (data) { existingClient = data; break; }
+      }
+      console.log("[CLIENT_LOOKUP] cleanPhone:", cleanPhone, "| found:", !!existingClient);
       if (existingClient) {
         clientData = {
           name: existingClient.full_name,
