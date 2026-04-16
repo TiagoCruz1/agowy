@@ -842,7 +842,9 @@ Deno.serve(async (req) => {
 
           if (service) {
             const startAt = new Date(`${pending.date}T${pending.time}:00-03:00`);
-            const endAt = new Date(startAt.getTime() + service.duration_minutes * 60000);
+            const durationMs = Number(service.duration_minutes) * 60000;
+            const endAt = new Date(startAt.getTime() + durationMs);
+            console.log("[APPT] startAt:", startAt.toISOString(), "| duration:", service.duration_minutes, "| durationMs:", durationMs, "| endAt:", endAt.toISOString());
 
             let { data: client } = await supabase.from("clients").select("*").eq("user_id", ownerUserId).eq("phone", phone).maybeSingle();
             if (!client) {
@@ -917,7 +919,8 @@ Deno.serve(async (req) => {
 
           if (service) {
             const startAt = new Date(`${apptData.date}T${apptData.time}:00-03:00`);
-            const endAt = new Date(startAt.getTime() + service.duration_minutes * 60000);
+            const durationMs = Number(service.duration_minutes) * 60000;
+            const endAt = new Date(startAt.getTime() + durationMs);
 
             // Usa dados coletados ou fallback para apptData
             const cd = newStateData.client_data || {};
