@@ -84,6 +84,34 @@ export default function Appointments() {
     enabled: !!userId,
   });
 
+  const { data: allOverdueRaw = [], refetch: refetchOverdue } = useQuery({
+    queryKey: ["overdue-appointments", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("*, clients(full_name, phone), services(name, duration_minutes)")
+        .eq("user_id", userId!)
+        .in("status", ["scheduled", "confirmed"])
+        .lt("end_at", new Date().toISOString())
+        .order("start_at");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!userId,
+  });
+
+  // Combina vencidos da semana atual + outras semanas, sem duplicar
+  const overdueAppointments = useMemo(() => {
+    const weekOverdue = appointments.filter((apt: any) =>
+      isPast(new Date(apt.end_at)) && (apt.status === "scheduled" || apt.status === "confirmed")
+    );
+    const weekIds = new Set(weekOverdue.map((a: any) => a.id));
+    const otherOverdue = allOverdueRaw.filter((a: any) => !weekIds.has(a.id));
+    return [...weekOverdue, ...otherOverdue].sort((a: any, b: any) =>
+      new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+    );
+  }, [appointments, allOverdueRaw]);
+
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-select", ownerUserId || userId],
     queryFn: async () => {
@@ -265,7 +293,7 @@ export default function Appointments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      queryClient.refetchQueries({ queryKey: ["overdue-appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["overdue-appointments"] });
       queryClient.invalidateQueries({ queryKey: ["maintenance"] });
       queryClient.invalidateQueries({ queryKey: ["maintenance-badge"] });
       toast.success("Status atualizado!");
