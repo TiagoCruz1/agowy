@@ -25,7 +25,7 @@ function formatBRL(value: number) {
 export default function Payments() {
   const { user } = useAuth();
   const { effectiveUserId } = useEffectiveUser();
-  const { isStudioOwner, isManicure } = useUserRole();
+  const { isStudioOwner, isManicure, isLoading: roleLoading } = useUserRole();
   const userId = effectiveUserId || user?.id;
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
