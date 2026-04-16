@@ -192,23 +192,7 @@ export default function Appointments() {
     enabled: !!userId,
   });
 
-  // Busca TODOS os agendamentos vencidos (sem filtro de semana)
-  const { data: overdueAppointments = [] } = useQuery({
-    queryKey: ["overdue-appointments", userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("appointments")
-        .select("*, clients(full_name, phone), services(name, duration_minutes)")
-        .eq("user_id", userId!)
-        .in("status", ["scheduled", "confirmed"])
-        .lt("end_at", new Date().toISOString())
-        .order("start_at");
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!userId,
-    refetchInterval: 60000,
-  });
+
 
   const checkBlockConflict = (date: string, time: string, durationMinutes: number): string | null => {
     if (!date || !time) return null;
