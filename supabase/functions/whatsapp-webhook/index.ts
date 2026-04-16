@@ -460,7 +460,8 @@ Deno.serve(async (req) => {
         .in("status", ["scheduled", "confirmed"]);
 
       if (selectedManicure?.user_id) {
-        apptQuery = apptQuery.eq("manicure_id", selectedManicure.user_id);
+        const { data: smProfile } = await supabase.from("profiles").select("id").eq("user_id", selectedManicure.user_id).single();
+        if (smProfile?.id) apptQuery = apptQuery.eq("manicure_id", smProfile.id);
       }
 
       const { data: existingAppts } = await apptQuery;
