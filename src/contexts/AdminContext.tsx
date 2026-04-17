@@ -23,8 +23,10 @@ const AdminContext = createContext<AdminContextType>({
 
 export const useAdminContext = () => useContext(AdminContext);
 
-export function AdminProvider({ children, realUserId }: { children: ReactNode; realUserId: string | null }) {
-  const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(null);
+export function AdminProvider({ children, realUserId, initialImpersonateUserId, initialImpersonateName }: { children: ReactNode; realUserId: string | null; initialImpersonateUserId?: string | null; initialImpersonateName?: string | null }) {
+  const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(
+    initialImpersonateUserId ? { userId: initialImpersonateUserId, fullName: initialImpersonateName || "", accountType: "studio", businessName: initialImpersonateName || undefined } : null
+  );
 
   return (
     <AdminContext.Provider value={{
