@@ -21,6 +21,7 @@ import Maintenance from "./pages/Maintenance";
 import Financial from "./pages/Financial";
 import Staff from "./pages/Staff";
 import Payments from "./pages/Payments";
+import AdminTiago from "./pages/AdminTiago";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="payments" element={<Payments />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
+            <Route path="/admin-tiago" element={<AdminTiago />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
