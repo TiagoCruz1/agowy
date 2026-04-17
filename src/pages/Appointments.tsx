@@ -69,15 +69,23 @@ export default function Appointments() {
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
 
   const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ["appointments", userId, weekStart.toISOString()],
+    queryKey: ["appointments", userId, weekStart.toISOString(), isManicure],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("appointments")
         .select("*, clients(full_name, phone), services(name, duration_minutes), manicure:profiles!appointments_manicure_id_fkey(full_name)")
-        .eq("user_id", userId!)
         .gte("start_at", weekStart.toISOString())
         .lte("start_at", weekEnd.toISOString())
         .order("start_at");
+
+      if (isManicure) {
+        const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", userId!).single();
+        query = query.eq("manicure_id", profile?.id);
+      } else {
+        query = query.eq("user_id", userId!);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
