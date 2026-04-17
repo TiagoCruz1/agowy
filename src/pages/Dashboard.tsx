@@ -141,11 +141,10 @@ export default function Dashboard() {
   const { data: manicureChart = [] } = useQuery({
     queryKey: ["manicure-chart", userId, startOfMonth(today).toISOString()],
     queryFn: async () => {
-      const { data: prof } = await supabase.from("profiles").select("id").eq("user_id", userId!).single();
+      const { data: prof } = await supabase.from("profiles").select("id, user_id, full_name").eq("user_id", userId!).single();
       if (!prof) return [];
       const { data: links } = await supabase.from("studio_manicures").select("manicure_user_id").eq("studio_profile_id", prof.id).eq("is_active", true);
-      if (!links?.length) return [];
-      const userIds = links.map((l: any) => l.manicure_user_id);
+      const userIds = [...(links || []).map((l: any) => l.manicure_user_id), prof.user_id];
       const { data: profiles } = await supabase.from("profiles").select("id, user_id, full_name").in("user_id", userIds);
 
       const start = startOfMonth(today).toISOString();
