@@ -277,7 +277,8 @@ export default function Payments() {
 
   const uploadSignatureMutation = useMutation({
     mutationFn: async ({ receiptId, file }: { receiptId: string; file: File }) => {
-      const path = `signatures/${receiptId}/${file.name}`;
+      const safeName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `signatures/${receiptId}/${safeName}`;
       const { error: uploadError } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
