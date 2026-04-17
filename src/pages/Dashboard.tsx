@@ -152,9 +152,17 @@ export default function Dashboard() {
       const result = [];
 
       for (const p of profiles || []) {
-        const { data: apts } = await supabase
-          .from("appointments").select("price, services(commission_percentage)")
-          .eq("manicure_id", p.id).eq("status", "completed").gte("start_at", start).lte("start_at", end);
+        // Se for a dona do estúdio, inclui agendamentos com e sem manicure_id
+        const isOwner = p.user_id === userId;
+        let apts: any[] = [];
+        if (isOwner) {
+          const { data: d1 } = await supabase.from("appointments").select("price, services(commission_percentage)").eq("user_id", userId!).eq("status", "completed").gte("start_at", start).lte("start_at", end).is("manicure_id", null);
+          const { data: d2 } = await supabase.from("appointments").select("price, services(commission_percentage)").eq("manicure_id", p.id).eq("status", "completed").gte("start_at", start).lte("start_at", end);
+          apts = [...(d1 || []), ...(d2 || [])];
+        } else {
+          const { data: d } = await supabase.from("appointments").select("price, services(commission_percentage)").eq("manicure_id", p.id).eq("status", "completed").gte("start_at", start).lte("start_at", end);
+          apts = d || [];
+        }
         const revenue = (apts || []).reduce((s: number, a: any) => s + (a.price || 0), 0);
         const commission = (apts || []).reduce((s: number, a: any) => s + (a.price || 0) * ((a.services?.commission_percentage || 0) / 100), 0);
         if (revenue > 0 || (apts || []).length > 0) result.push({ name: p.full_name.split(" ")[0], faturamento: revenue, comissao: commission, atendimentos: (apts || []).length });
@@ -181,13 +189,7 @@ export default function Dashboard() {
       }
 
       const { data } = await query;
-      // Para dona: também inclui agendamentos sem manicure_id
-      let extraData: any[] = [];
-      if (!isManicure) {
-        const { data: noManicure } = await supabase.from("appointments").select("services(name)").eq("status", "completed").eq("user_id", userId!).is("manicure_id", null).gte("start_at", start).lte("start_at", end);
-        extraData = noManicure || [];
-      }
-      const allData = [...(data || []), ...extraData];
+      const allData = data || [];
       const map = new Map<string, number>();
       for (const a of allData) {
         const name = (a.services as any)?.name || "—";
