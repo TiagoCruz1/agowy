@@ -102,10 +102,10 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
     queryKey: ["atiago-stats"],
     queryFn: async () => {
       const [{ count: users }, { count: apts }, { count: clients }, { count: convs }] = await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
+        adminSupabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("appointments").select("*", { count: "exact", head: true }),
         supabase.from("clients").select("*", { count: "exact", head: true }),
-        supabase.from("whatsapp_conversations").select("*", { count: "exact", head: true }),
+        adminSupabase.from("whatsapp_conversations").select("*", { count: "exact", head: true }),
       ]);
       const { data: rev } = await supabase.from("appointments").select("price").eq("status", "completed");
       const totalRev = (rev || []).reduce((s, a) => s + (Number(a.price) || 0), 0);
@@ -116,7 +116,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   const { data: profiles = [] } = useQuery({
     queryKey: ["atiago-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+      const { data } = await adminSupabase.from("profiles").select("*").order("created_at", { ascending: false });
       return data || [];
     },
   });
@@ -124,7 +124,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   const { data: allRoles = [] } = useQuery({
     queryKey: ["atiago-roles"],
     queryFn: async () => {
-      const { data } = await supabase.from("user_roles").select("*");
+      const { data } = await adminSupabase.from("user_roles").select("*");
       return data || [];
     },
   });
@@ -156,7 +156,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   const { data: aiSettings = [] } = useQuery({
     queryKey: ["atiago-ai"],
     queryFn: async () => {
-      const { data } = await supabase.from("ai_settings").select("*");
+      const { data } = await adminSupabase.from("ai_settings").select("*");
       return data || [];
     },
   });
@@ -176,7 +176,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
       const newUser = await res.json();
       if (!res.ok) throw new Error(newUser.msg || "Erro ao criar usuário");
       // Atualiza profile
-      await supabase.from("profiles").update({
+      await adminSupabase.from("profiles").update({
         full_name: form.full_name,
         business_name: form.business_name || null,
         phone: form.phone || null,
@@ -218,7 +218,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
   const deleteConvMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from("whatsapp_conversations").update({ state_data: {} }).eq("id", id);
+      await adminSupabase.from("whatsapp_conversations").update({ state_data: {} }).eq("id", id);
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["atiago-convs"] }); toast.success("Histórico limpo!"); },
   });
