@@ -12,10 +12,24 @@ export function useEffectiveUser() {
   const { isAdmin } = useUserRole();
   const { effectiveUserId, impersonatedUser, isImpersonating } = useAdminContext();
 
+  // Verifica se veio do painel admin externo (/admin-tiago)
+  const adminImpersonate = sessionStorage.getItem("admin_impersonate");
+  const adminImpersonateData = adminImpersonate ? JSON.parse(adminImpersonate) : null;
+  const isAdminImpersonate = !!adminImpersonateData?.userId;
+
+  const effectiveId = isAdminImpersonate
+    ? adminImpersonateData.userId
+    : (isAdmin && isImpersonating ? effectiveUserId : user?.id) || null;
+
   return {
-    effectiveUserId: (isAdmin && isImpersonating ? effectiveUserId : user?.id) || null,
+    effectiveUserId: effectiveId,
     realUserId: user?.id || null,
-    isImpersonating: isAdmin && isImpersonating,
-    impersonatedUser,
+    isImpersonating: isAdminImpersonate || (isAdmin && isImpersonating),
+    impersonatedUser: adminImpersonateData ? {
+      userId: adminImpersonateData.userId,
+      fullName: adminImpersonateData.name,
+      accountType: "studio",
+      businessName: adminImpersonateData.name,
+    } : impersonatedUser,
   };
 }
