@@ -195,7 +195,7 @@ export default function Dashboard() {
         const name = (a.services as any)?.name || "—";
         map.set(name, (map.get(name) || 0) + 1);
       }
-      return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
+      return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
     },
     enabled: !!userId,
   });
