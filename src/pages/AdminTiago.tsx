@@ -39,7 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, Users, Calendar, MessageCircle, Database, Bot, RefreshCw, Pencil, Eye, EyeOff, ExternalLink, ArrowLeft } from "lucide-react";
+import { Shield, Users, Calendar, MessageCircle, Database, Bot, RefreshCw, Pencil, Eye, EyeOff, ExternalLink, ArrowLeft, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -217,6 +217,25 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      // Deleta da auth
+      const res = await fetch(`https://vqqyfvgzxstkgzpeoonj.supabase.co/auth/v1/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}` },
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.msg || "Erro ao deletar usuário");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["atiago-profiles"] });
+      toast.success("Usuário deletado!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const updateUserMutation = useMutation({
     mutationFn: async (form: any) => {
       const { error } = await adminSupabase.from("profiles").update({
@@ -226,6 +245,14 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
         account_type: form.account_type,
       }).eq("id", form.id);
       if (error) throw error;
+      // Atualiza senha se fornecida
+      if (form.new_password) {
+        await fetch(`https://vqqyfvgzxstkgzpeoonj.supabase.co/auth/v1/admin/users/${form.user_id}`, {
+          method: "PUT",
+          headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ password: form.new_password }),
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atiago-profiles"] });
@@ -394,16 +421,19 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                               onClick={() => { setEditForm({ ...p }); setEditUser(p); }}>
                               <Pencil className="w-3 h-3" />
                             </Button>
-                            {(p.account_type === "studio" || getRoles(p.user_id).includes("manicure")) && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"
-                                title="Acessar como este estúdio"
-                                onClick={() => {
-                                  sessionStorage.setItem("admin_impersonate", JSON.stringify({ userId: p.user_id, name: p.business_name || p.full_name }));
-                                  navigate("/dashboard");
-                                }}>
-                                <ExternalLink className="w-3 h-3" />
-                              </Button>
-                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary"
+                              title="Acessar dashboard como este usuário"
+                              onClick={() => {
+                                sessionStorage.setItem("admin_impersonate", JSON.stringify({ userId: p.user_id, name: p.business_name || p.full_name }));
+                                navigate("/dashboard");
+                              }}>
+                              <ExternalLink className="w-3 h-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                              title="Apagar usuário"
+                              onClick={() => { if (confirm(`Apagar ${p.full_name}? Esta ação não pode ser desfeita.`)) deleteUserMutation.mutate(p.user_id); }}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -698,6 +728,16 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Usuário</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Email</Label>
+                <Input value={editForm.email || ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="email@exemplo.com" />
+              </div>
+              <div className="space-y-1">
+                <Label>Nova Senha</Label>
+                <Input type="password" value={editForm.new_password || ""} onChange={(e) => setEditForm({ ...editForm, new_password: e.target.value })} placeholder="Deixe vazio para não alterar" />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Nome Completo *</Label>
