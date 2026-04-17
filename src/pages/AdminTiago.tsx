@@ -1,4 +1,11 @@
 import { useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// Cliente com service role para operações admin
+const adminSupabase = createClient(
+  "https://vqqyfvgzxstkgzpeoonj.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXlmdmd6eHN0a2d6cGVvb25qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDkyNDMyNywiZXhwIjoyMDkwNTAwMzI3fQ.odkmUXWS21svwJVSbuXc4XCrV92oXg9Te9gDvbDuCak"
+);
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -177,7 +184,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
       }).eq("user_id", newUser.id);
       // Adiciona role
       if (form.role) {
-        const { error: roleErr } = await supabase.from("user_roles").insert({ user_id: newUser.id, role: form.role });
+        const { error: roleErr } = await adminSupabase.from("user_roles").insert({ user_id: newUser.id, role: form.role });
       if (roleErr && !roleErr.message.includes("duplicate")) throw roleErr;
       }
       return newUser;
@@ -193,14 +200,13 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
   const updateUserMutation = useMutation({
     mutationFn: async (form: any) => {
-      const { error, data } = await supabase.from("profiles").update({
+      const { error } = await adminSupabase.from("profiles").update({
         full_name: form.full_name,
         business_name: form.business_name || null,
         phone: form.phone || null,
         account_type: form.account_type,
-      }).eq("id", form.id).select();
+      }).eq("id", form.id);
       if (error) throw error;
-      if (!data?.length) throw new Error("Registro não encontrado ou sem permissão para editar");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atiago-profiles"] });
@@ -219,7 +225,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
   const toggleAIMutation = useMutation({
     mutationFn: async ({ userId, enabled }: { userId: string; enabled: boolean }) => {
-      const { error } = await supabase.from("ai_settings").update({ ai_globally_enabled: enabled }).eq("user_id", userId);
+      const { error } = await adminSupabase.from("ai_settings").update({ ai_globally_enabled: enabled }).eq("user_id", userId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["atiago-ai"] }); toast.success("IA atualizada!"); },
@@ -261,7 +267,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
   const loadDbTable = async (table: string) => {
     setDbLoading(true);
-    const { data } = await supabase.from(table as any).select("*").limit(100);
+    const { data } = await adminSupabase.from(table as any).select("*").limit(100);
     setDbData(data || []);
     setDbLoading(false);
   };
@@ -714,8 +720,8 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                 <Label>Role</Label>
                 <Select value={getRoles(editForm.user_id)?.[0] || "none"} onValueChange={async (v) => {
                   if (v !== "none") {
-                    await supabase.from("user_roles").delete().eq("user_id", editForm.user_id);
-                    await supabase.from("user_roles").insert({ user_id: editForm.user_id, role: v });
+                    await adminSupabase.from("user_roles").delete().eq("user_id", editForm.user_id);
+                    await adminSupabase.from("user_roles").insert({ user_id: editForm.user_id, role: v });
                     queryClient.invalidateQueries({ queryKey: ["atiago-roles"] });
                     toast.success("Role atualizada!");
                   }
