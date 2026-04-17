@@ -25,7 +25,7 @@ export default function DashboardLayout() {
   }
 
   return (
-    <AdminProvider realUserId={user.id} initialImpersonate={initialImpersonate}>
+    <AdminProvider realUserId={user.id}>
       <SidebarProvider>
         {impersonateData && (
           <div className="bg-destructive text-destructive-foreground text-xs px-4 py-2 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
