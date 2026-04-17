@@ -377,8 +377,8 @@ export default function Payments() {
                             {expandedReceipt === r.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             Detalhes
                           </Button>
-                          {/* Botão PDF — sempre disponível */}
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                          {/* Botão PDF — some quando tem assinatura por foto */}
+                          {!r.manual_signature_url && <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
                             onClick={async () => {
                               const { data: items } = await supabase
                                 .from("payment_receipt_items")
@@ -388,7 +388,7 @@ export default function Payments() {
                             }}>
                             <FileText className="w-3 h-3" />
                             PDF
-                          </Button>
+                          </Button>}
                           {/* Ver assinatura — se tiver foto */}
                           {r.manual_signature_url && (
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-success"
