@@ -1,11 +1,30 @@
 import { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Cliente com service role para operações admin
-const adminSupabase = createClient(
-  "https://vqqyfvgzxstkgzpeoonj.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXlmdmd6eHN0a2d6cGVvb25qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDkyNDMyNywiZXhwIjoyMDkwNTAwMzI3fQ.odkmUXWS21svwJVSbuXc4XCrV92oXg9Te9gDvbDuCak"
-);
+const SB_URL = "https://vqqyfvgzxstkgzpeoonj.supabase.co";
+const SB_SK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXlmdmd6eHN0a2d6cGVvb25qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDkyNDMyNywiZXhwIjoyMDkwNTAwMzI3fQ.odkmUXWS21svwJVSbuXc4XCrV92oXg9Te9gDvbDuCak";
+
+// Helper REST com service role — bypassa RLS
+const adminSupabase = {
+  from: (table: string) => ({
+    select: (cols = "*") => ({
+      order: (col: string, opts?: any) => ({
+        limit: (n: number) => fetch(`${SB_URL}/rest/v1/${table}?select=${cols}&order=${col}.${opts?.ascending ? "asc" : "desc"}&limit=${n}`, { headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}`, "Content-Type": "application/json", Prefer: "return=representation" } }).then(r => r.json()).then(data => ({ data: Array.isArray(data) ? data : [], error: null })),
+        then: (fn: any) => fetch(`${SB_URL}/rest/v1/${table}?select=${cols}&order=${col}.${opts?.ascending ? "asc" : "desc"}`, { headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}` } }).then(r => r.json()).then(data => fn({ data: Array.isArray(data) ? data : [], error: null })),
+      }),
+      in: (col: string, vals: any[]) => fetch(`${SB_URL}/rest/v1/${table}?select=${cols}&${col}=in.(${vals.join(",")})`, { headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}` } }).then(r => r.json()).then(data => ({ data: Array.isArray(data) ? data : [], error: null })),
+      limit: (n: number) => fetch(`${SB_URL}/rest/v1/${table}?select=${cols}&limit=${n}`, { headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}` } }).then(r => r.json()).then(data => ({ data: Array.isArray(data) ? data : [], error: null })),
+      eq: (col: string, val: any) => fetch(`${SB_URL}/rest/v1/${table}?select=${cols}&${col}=eq.${val}`, { headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}` } }).then(r => r.json()).then(data => ({ data: Array.isArray(data) ? data : [], error: null })),
+    }),
+    update: (body: any) => ({
+      eq: (col: string, val: any) => fetch(`${SB_URL}/rest/v1/${table}?${col}=eq.${val}`, { method: "PATCH", headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}`, "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify(body) }).then(async r => { const d = await r.json(); return r.ok ? { error: null, data: d } : { error: { message: d.message || JSON.stringify(d) }, data: null }; }),
+    }),
+    insert: (body: any) => fetch(`${SB_URL}/rest/v1/${table}`, { method: "POST", headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}`, "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify(body) }).then(async r => { const d = await r.json(); return r.ok ? { error: null, data: d } : { error: { message: d.message || JSON.stringify(d) }, data: null }; }),
+    delete: () => ({
+      eq: (col: string, val: any) => fetch(`${SB_URL}/rest/v1/${table}?${col}=eq.${val}`, { method: "DELETE", headers: { apikey: SB_SK, Authorization: `Bearer ${SB_SK}` } }).then(r => ({ error: r.ok ? null : { message: "Delete failed" } })),
+    }),
+  }),
+};
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
