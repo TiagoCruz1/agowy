@@ -84,6 +84,11 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   const [sqlResult, setSqlResult] = useState<any>(null);
   const [sqlLoading, setSqlLoading] = useState(false);
   const [selectedConv, setSelectedConv] = useState<any>(null);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({ email: "", password: "", full_name: "", business_name: "", phone: "", account_type: "solo", role: "manicure" });
+  const [dbTab, setDbTab] = useState("profiles");
+  const [dbData, setDbData] = useState<any[]>([]);
+  const [dbLoading, setDbLoading] = useState(false);
   const navigate = useNavigate();
 
   const { data: stats } = useQuery({
@@ -147,6 +152,42 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
       const { data } = await supabase.from("ai_settings").select("*");
       return data || [];
     },
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async (form: any) => {
+      // Cria usuário via API Supabase admin
+      const res = await fetch(`https://vqqyfvgzxstkgzpeoonj.supabase.co/auth/v1/admin/users`, {
+        method: "POST",
+        headers: {
+          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXlmdmd6eHN0a2d6cGVvb25qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDkyNDMyNywiZXhwIjoyMDkwNTAwMzI3fQ.odkmUXWS21svwJVSbuXc4XCrV92oXg9Te9gDvbDuCak",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxcXlmdmd6eHN0a2d6cGVvb25qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDkyNDMyNywiZXhwIjoyMDkwNTAwMzI3fQ.odkmUXWS21svwJVSbuXc4XCrV92oXg9Te9gDvbDuCak",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: form.email, password: form.password, email_confirm: true }),
+      });
+      const newUser = await res.json();
+      if (!res.ok) throw new Error(newUser.msg || "Erro ao criar usuário");
+      // Atualiza profile
+      await supabase.from("profiles").update({
+        full_name: form.full_name,
+        business_name: form.business_name || null,
+        phone: form.phone || null,
+        account_type: form.account_type,
+      }).eq("user_id", newUser.id);
+      // Adiciona role
+      if (form.role) {
+        await supabase.from("user_roles").insert({ user_id: newUser.id, role: form.role }).onConflict("user_id,role").ignore();
+      }
+      return newUser;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["atiago-profiles"] });
+      toast.success("Usuário criado!");
+      setCreateUserOpen(false);
+      setCreateUserForm({ email: "", password: "", full_name: "", business_name: "", phone: "", account_type: "solo", role: "manicure" });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const updateUserMutation = useMutation({
@@ -216,6 +257,13 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
     setSqlLoading(false);
   };
 
+  const loadDbTable = async (table: string) => {
+    setDbLoading(true);
+    const { data } = await supabase.from(table as any).select("*").limit(100);
+    setDbData(data || []);
+    setDbLoading(false);
+  };
+
   const getRoles = (userId: string) => allRoles.filter((r: any) => r.user_id === userId).map((r: any) => r.role);
 
   const statusColor: Record<string, string> = {
@@ -263,16 +311,21 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
             <TabsTrigger value="appointments"><Calendar className="w-3 h-3 mr-1" />Agendamentos</TabsTrigger>
             <TabsTrigger value="whatsapp"><MessageCircle className="w-3 h-3 mr-1" />WhatsApp</TabsTrigger>
             <TabsTrigger value="bot"><Bot className="w-3 h-3 mr-1" />Bot/IA</TabsTrigger>
-            <TabsTrigger value="sql"><Database className="w-3 h-3 mr-1" />SQL</TabsTrigger>
+            <TabsTrigger value="sql"><Database className="w-3 h-3 mr-1" />Banco</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Todos os Usuários</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ["atiago-profiles"] })}>
-                  <RefreshCw className="w-3 h-3 mr-1" />Atualizar
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => setCreateUserOpen(true)}>
+                    <Users className="w-3 h-3 mr-1" />Novo Usuário
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ["atiago-profiles"] })}>
+                    <RefreshCw className="w-3 h-3 mr-1" />Atualizar
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
@@ -472,48 +525,106 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
           </TabsContent>
 
           <TabsContent value="sql">
-            <Card>
-              <CardHeader><CardTitle>Consulta SQL</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea
-                  value={sqlQuery}
-                  onChange={(e) => setSqlQuery(e.target.value)}
-                  placeholder="SELECT * FROM profiles LIMIT 10;"
-                  className="font-mono text-sm min-h-[120px]"
-                />
-                <div className="flex gap-2">
-                  <Button onClick={runSQL} disabled={sqlLoading}>
-                    {sqlLoading ? "Executando..." : "Executar"}
-                  </Button>
-                  <Button variant="outline" onClick={() => { setSqlQuery(""); setSqlResult(null); }}>Limpar</Button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {[
-                    { label: "Todos usuários", sql: "SELECT user_id, full_name, account_type FROM profiles ORDER BY created_at DESC;" },
-                    { label: "Conversas ativas", sql: "SELECT phone, last_message_at, state FROM whatsapp_conversations ORDER BY last_message_at DESC LIMIT 20;" },
-                    { label: "Agendamentos hoje", sql: "SELECT id, status, start_at FROM appointments WHERE start_at::date = CURRENT_DATE;" },
-                    { label: "Clientes", sql: "SELECT full_name, phone, created_at FROM clients ORDER BY created_at DESC LIMIT 20;" },
-                    { label: "Serviços", sql: "SELECT name, price, commission_percentage FROM services LIMIT 20;" },
-                    { label: "Recibos", sql: "SELECT * FROM payment_receipts ORDER BY created_at DESC LIMIT 10;" },
-                  ].map((q) => (
-                    <Button key={q.label} variant="outline" size="sm" className="h-auto py-2 text-xs text-left justify-start"
-                      onClick={() => setSqlQuery(q.sql)}>
-                      {q.label}
-                    </Button>
-                  ))}
-                </div>
-                {sqlResult && (
-                  <div className="bg-muted rounded-lg p-3">
-                    <pre className="text-xs overflow-auto max-h-64 whitespace-pre-wrap">
-                      {JSON.stringify(sqlResult, null, 2)}
-                    </pre>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader><CardTitle>Explorar Banco de Dados</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {["profiles","appointments","clients","services","whatsapp_conversations","user_roles","ai_settings","studio_manicures","maintenance_alerts","payment_receipts","working_hours"].map(t => (
+                      <Button key={t} variant={dbTab === t ? "default" : "outline"} size="sm" className="text-xs h-7"
+                        onClick={() => { setDbTab(t); loadDbTable(t); }}>
+                        {t}
+                      </Button>
+                    ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  {dbLoading && <div className="flex justify-center py-4"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" /></div>}
+                  {dbData.length > 0 && (
+                    <div className="overflow-auto max-h-96 border rounded-lg">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted sticky top-0">
+                          <tr>{Object.keys(dbData[0]).map(k => <th key={k} className="px-2 py-1 text-left font-medium">{k}</th>)}</tr>
+                        </thead>
+                        <tbody>
+                          {dbData.map((row, i) => (
+                            <tr key={i} className="border-t hover:bg-muted/30">
+                              {Object.values(row).map((v: any, j) => (
+                                <td key={j} className="px-2 py-1 max-w-[200px] truncate" title={String(v ?? "")}>
+                                  {v === null ? <span className="text-muted-foreground italic">null</span> : String(v)}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {dbData.length === 0 && !dbLoading && dbTab && (
+                    <p className="text-center text-muted-foreground py-4 text-sm">Clique em uma tabela para ver os dados</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal criar usuário */}
+      <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Criar Novo Usuário</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Email *</Label>
+                <Input value={createUserForm.email} onChange={(e) => setCreateUserForm({...createUserForm, email: e.target.value})} placeholder="email@exemplo.com" />
+              </div>
+              <div className="space-y-1">
+                <Label>Senha *</Label>
+                <Input type="password" value={createUserForm.password} onChange={(e) => setCreateUserForm({...createUserForm, password: e.target.value})} placeholder="mínimo 6 caracteres" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Nome Completo *</Label>
+              <Input value={createUserForm.full_name} onChange={(e) => setCreateUserForm({...createUserForm, full_name: e.target.value})} placeholder="Nome da manicure ou dona" />
+            </div>
+            <div className="space-y-1">
+              <Label>Nome do Estúdio</Label>
+              <Input value={createUserForm.business_name} onChange={(e) => setCreateUserForm({...createUserForm, business_name: e.target.value})} placeholder="Ex: Yasmin Nails Studio" />
+            </div>
+            <div className="space-y-1">
+              <Label>Telefone</Label>
+              <Input value={createUserForm.phone} onChange={(e) => setCreateUserForm({...createUserForm, phone: e.target.value})} placeholder="5519999999999" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Tipo de Conta</Label>
+                <Select value={createUserForm.account_type} onValueChange={(v) => setCreateUserForm({...createUserForm, account_type: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="solo">Solo</SelectItem>
+                    <SelectItem value="studio">Estúdio</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Role</Label>
+                <Select value={createUserForm.role} onValueChange={(v) => setCreateUserForm({...createUserForm, role: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manicure">Manicure</SelectItem>
+                    <SelectItem value="studio_owner">Studio Owner</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button className="w-full" disabled={(createUserMutation as any).isPending}
+              onClick={() => createUserMutation.mutate(createUserForm)}>
+              {(createUserMutation as any).isPending ? "Criando..." : "Criar Usuário"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal conversa WhatsApp */}
       <Dialog open={!!selectedConv} onOpenChange={(o) => { if (!o) setSelectedConv(null); }}>
