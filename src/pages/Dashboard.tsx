@@ -157,7 +157,7 @@ export default function Dashboard() {
           .eq("manicure_id", p.id).eq("status", "completed").gte("start_at", start).lte("start_at", end);
         const revenue = (apts || []).reduce((s: number, a: any) => s + (a.price || 0), 0);
         const commission = (apts || []).reduce((s: number, a: any) => s + (a.price || 0) * ((a.services?.commission_percentage || 0) / 100), 0);
-        if (revenue > 0) result.push({ name: p.full_name.split(" ")[0], faturamento: revenue, comissao: commission });
+        if (revenue > 0 || (apts || []).length > 0) result.push({ name: p.full_name.split(" ")[0], faturamento: revenue, comissao: commission, atendimentos: (apts || []).length });
       }
       return result.sort((a, b) => b.faturamento - a.faturamento);
     },
@@ -181,8 +181,15 @@ export default function Dashboard() {
       }
 
       const { data } = await query;
+      // Para dona: também inclui agendamentos sem manicure_id
+      let extraData: any[] = [];
+      if (!isManicure) {
+        const { data: noManicure } = await supabase.from("appointments").select("services(name)").eq("status", "completed").eq("user_id", userId!).is("manicure_id", null).gte("start_at", start).lte("start_at", end);
+        extraData = noManicure || [];
+      }
+      const allData = [...(data || []), ...extraData];
       const map = new Map<string, number>();
-      for (const a of data || []) {
+      for (const a of allData) {
         const name = (a.services as any)?.name || "—";
         map.set(name, (map.get(name) || 0) + 1);
       }
@@ -294,10 +301,12 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={manicureChart} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${v}`} />
-                  <Tooltip formatter={(v: any) => formatBRL(v)} />
-                  <Bar dataKey="faturamento" name="Faturamento" fill="#e91e8c" radius={[4,4,0,0]} />
-                  <Bar dataKey="comissao" name="Comissão" fill="#9c27b0" radius={[4,4,0,0]} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${v}`} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: any, name: string) => name === "Atendimentos" ? v : formatBRL(v)} />
+                  <Bar dataKey="faturamento" yAxisId="left" name="Faturamento" fill="#e91e8c" radius={[4,4,0,0]} />
+                  <Bar dataKey="comissao" name="Comissão" fill="#9c27b0" radius={[4,4,0,0]} yAxisId="left" />
+                  <Bar dataKey="atendimentos" name="Atendimentos" fill="#2196f3" radius={[4,4,0,0]} yAxisId="right" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
