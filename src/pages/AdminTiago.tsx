@@ -177,7 +177,8 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
       }).eq("user_id", newUser.id);
       // Adiciona role
       if (form.role) {
-        await supabase.from("user_roles").insert({ user_id: newUser.id, role: form.role }).onConflict("user_id,role").ignore();
+        const { error: roleErr } = await supabase.from("user_roles").insert({ user_id: newUser.id, role: form.role });
+      if (roleErr && !roleErr.message.includes("duplicate")) throw roleErr;
       }
       return newUser;
     },
@@ -192,13 +193,14 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
   const updateUserMutation = useMutation({
     mutationFn: async (form: any) => {
-      const { error } = await supabase.from("profiles").update({
+      const { error, data } = await supabase.from("profiles").update({
         full_name: form.full_name,
-        business_name: form.business_name,
-        phone: form.phone,
+        business_name: form.business_name || null,
+        phone: form.phone || null,
         account_type: form.account_type,
-      }).eq("id", form.id);
+      }).eq("id", form.id).select();
       if (error) throw error;
+      if (!data?.length) throw new Error("Registro não encontrado ou sem permissão para editar");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atiago-profiles"] });
@@ -415,8 +417,8 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                         <TableCell className="text-xs">{format(new Date(a.start_at), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
                         <TableCell className="text-xs">{(a.owner as any)?.business_name || (a.owner as any)?.full_name || "—"}</TableCell>
                         <TableCell className="text-xs">{(a.manicure as any)?.full_name || "—"}</TableCell>
-                        <TableCell>{a.clients?.full_name || "—"}</TableCell>
-                        <TableCell>{a.services?.name || "—"}</TableCell>
+                        <TableCell>{(a as any).client?.full_name || "—"}</TableCell>
+                        <TableCell>{(a as any).service?.name || "—"}</TableCell>
                         <TableCell>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[a.status] || ""}`}>
                             {a.status}
@@ -589,7 +591,19 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
             </div>
             <div className="space-y-1">
               <Label>Nome do Estúdio</Label>
-              <Input value={createUserForm.business_name} onChange={(e) => setCreateUserForm({...createUserForm, business_name: e.target.value})} placeholder="Ex: Yasmin Nails Studio" />
+              <Input value={createUserForm.business_name} onChange={(e) => setCreateUserForm({...createUserForm, business_name: e.target.value})} placeholder="Ex: Catia Nails (deixe vazio para submanicure)" />
+            </div>
+            <div className="space-y-1">
+              <Label>Vincular a estúdio existente (para submanicures)</Label>
+              <Select value={(createUserForm as any).studio_user_id || "none"} onValueChange={(v) => setCreateUserForm({...createUserForm, ...({"studio_user_id": v === "none" ? null : v} as any)})}>
+                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {profiles.filter((p: any) => p.account_type === "studio").map((p: any) => (
+                    <SelectItem key={p.user_id} value={p.user_id}>{p.business_name || p.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Telefone</Label>
@@ -659,33 +673,70 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Usuário</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Nome</Label>
-              <Input value={editForm.full_name || ""} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Nome Completo *</Label>
+                <Input value={editForm.full_name || ""} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Telefone</Label>
+                <Input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+              </div>
             </div>
             <div className="space-y-1">
-              <Label>Nome do Negócio</Label>
-              <Input value={editForm.business_name || ""} onChange={(e) => setEditForm({ ...editForm, business_name: e.target.value })} />
+              <Label>Nome do Estúdio</Label>
+              <Input value={editForm.business_name || ""} onChange={(e) => setEditForm({ ...editForm, business_name: e.target.value })} placeholder="Ex: Yasmin Nails Studio" />
             </div>
             <div className="space-y-1">
-              <Label>Telefone</Label>
-              <Input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label>Tipo de Conta</Label>
-              <Select value={editForm.account_type} onValueChange={(v) => setEditForm({ ...editForm, account_type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Estúdio vinculado (para submanicures)</Label>
+              <Select value={editForm.studio_user_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, studio_user_id: v === "none" ? null : v })}>
+                <SelectTrigger><SelectValue placeholder="Nenhum (solo/dona)" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="solo">Solo</SelectItem>
-                  <SelectItem value="studio">Estúdio</SelectItem>
+                  <SelectItem value="none">Nenhum (solo/dona)</SelectItem>
+                  {profiles.filter((p: any) => p.account_type === "studio").map((p: any) => (
+                    <SelectItem key={p.user_id} value={p.user_id}>{p.business_name || p.full_name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Tipo de Conta</Label>
+                <Select value={editForm.account_type} onValueChange={(v) => setEditForm({ ...editForm, account_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="solo">Solo</SelectItem>
+                    <SelectItem value="studio">Estúdio</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Role</Label>
+                <Select value={getRoles(editForm.user_id)?.[0] || "none"} onValueChange={async (v) => {
+                  if (v !== "none") {
+                    await supabase.from("user_roles").delete().eq("user_id", editForm.user_id);
+                    await supabase.from("user_roles").insert({ user_id: editForm.user_id, role: v });
+                    queryClient.invalidateQueries({ queryKey: ["atiago-roles"] });
+                    toast.success("Role atualizada!");
+                  }
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manicure">Manicure</SelectItem>
+                    <SelectItem value="studio_owner">Studio Owner</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="bg-muted/30 rounded p-2 text-xs text-muted-foreground space-y-1">
               <p><strong>user_id:</strong> {editForm.user_id}</p>
               <p><strong>profile_id:</strong> {editForm.id}</p>
             </div>
-            <Button className="w-full" onClick={() => updateUserMutation.mutate(editForm)}>Salvar</Button>
+            <Button className="w-full" onClick={() => updateUserMutation.mutate(editForm)}
+              disabled={(updateUserMutation as any).isPending}>
+              {(updateUserMutation as any).isPending ? "Salvando..." : "Salvar Alterações"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
